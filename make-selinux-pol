@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [ $# -lt 1 ]; then
+	echo "This script creates a new SELinux Reference Policy module for <name> binary"
+	echo $0 name
+	exit
+fi
+
+T="${1//-/_}"
+
+echo > $1.if
+cat << EOF > $1.fc
+/usr/bin/$1							gen_context(system_u:object_r:${T}_exec_t,s0)
+/usr/local/bin/$1						gen_context(system_u:object_r:${T}_exec_t,s0)
+
+/usr/lib/systemd/system/$1.*    --      			gen_context(system_u:object_r:${T}_unit_t,s0)
+
+EOF
+
+cat << EOF > $1.te
+policy_module(${T}, 1.0.0)
+
+type ${T}_t;
+type ${T}_exec_t;
+
+init_daemon_domain(${T}_t, ${T}_exec_t)
+
+type ${T}_unit_t;
+init_unit_file(${T}_init_t)
+
+permissive ${T}_t;
+
+EOF
